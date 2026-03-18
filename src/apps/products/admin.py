@@ -12,14 +12,25 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("name", "category", "price", "is_promo_eligible", "is_active")
+    list_display = (
+        "id",
+        "name",
+        "category",
+        "price",
+        "stock",
+        "is_promo_eligible",
+        "is_active",
+    )
     list_filter = ("category", "is_active", "is_promo_eligible")
     search_fields = ("name",)
-    list_editable = ("is_active", "is_promo_eligible")
+    list_editable = ("price", "stock", "is_active", "is_promo_eligible")
     readonly_fields = ("created_at", "updated_at")
 
     fieldsets = (
-        ("Основная информация", {"fields": ("name", "category", "price", "is_active")}),
+        (
+            "Основная информация",
+            {"fields": ("id", "name", "category", "price", "stock", "is_active")},
+        ),
         ("Настройки промокодов", {"fields": ("is_promo_eligible",)}),
         (
             "Временные метки",

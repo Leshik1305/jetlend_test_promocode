@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator
 from django.db import models
 
 from src.core.models import BaseModel
@@ -13,6 +14,7 @@ class Category(BaseModel):
         verbose_name = "Категория"
         verbose_name_plural = "Категории"
         ordering = ["name"]
+        db_table = "categories"
 
     def __str__(self):
         return self.name
@@ -35,6 +37,12 @@ class Product(BaseModel):
         verbose_name="Цена",
         help_text="Цена в рублях",
     )
+    stock = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Остаток на складе",
+        help_text="Количество единиц товара, доступных для заказа",
+        validators=[MinValueValidator(0)],
+    )
     is_promo_eligible = models.BooleanField(
         default=True,
         verbose_name="Доступен для промокодов",
@@ -45,6 +53,7 @@ class Product(BaseModel):
         verbose_name = "Товар"
         verbose_name_plural = "Товары"
         ordering = ["name"]
+        db_table = "products"
 
     def __str__(self):
         return self.name

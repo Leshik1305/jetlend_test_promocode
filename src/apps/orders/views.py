@@ -1,4 +1,7 @@
 import json
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.views import View
 from django.db import transaction
@@ -17,87 +20,131 @@ User = get_user_model()
 @method_decorator(csrf_exempt, name="dispatch")
 class OrderCreateView(View):
     def post(self, request, *args, **kwargs):
-        data = json.loads(request.body)
-        user_id = data.get("user_id")
-        goods_data = data.get("goods", [])
-        promo_code_str = data.get("promo_code")
+        try:
+            data = json.loads(request.body)
+            user_id = data.get("user_id")
+            goods_data = data.get("goods", [])
+            promocode = data.get("promo_code")
+        except (json.JSONDecodeError, AttributeError):
+            return JsonResponse(
+                {"error": "Некорректный формат JSON в теле запроса"}, status=400
+            )
+
+        if not goods_data:
+            return JsonResponse(
+                {"error": "Список товаров не может быть пустым"}, status=400
+            )
 
         user = get_object_or_404(User, id=user_id)
 
-        # Находим промокод
-        promo = None
-        if promo_code_str:
-            promo = PromoCode.objects.filter(code=promo_code_str).first()
+        try:
+            with transaction.atomic():
+                promo = None
+                if promocode:
+                    try:
+                        promo = PromoCode.objects.select_for_update().get(
+                            code=promocode
+                        )
+                        promo.clean()
 
-        with transaction.atomic():
-            # Создаем болванку заказа
-            order = Order.objects.create(user=user, promocode=promo, total_amount=0)
+                        if Order.objects.filter(user=user, promocode=promo).exists():
+                            return JsonResponse(
+                                {"error": "Вы уже использовали этот промокод"},
+                                status=400,
+                            )
 
-            response_goods = []
-            total_price = 0
-            total_discount_sum = 0
+                    except PromoCode.DoesNotExist:
+                        return JsonResponse({"error": "Промокод не найден"}, status=404)
+                    except ValidationError as e:
+                        return JsonResponse({"error": e.message}, status=400)
 
-            for item in goods_data:
-                product = Product.objects.get(id=item["good_id"])
-                qty = item["quantity"]
-
-                price = product.price
-                discount_value = 0
-
-                # Если промокод подходит к товару (по категориям или если их нет)
-                if promo and (
-                    not promo.categories.exists()
-                    or promo.categories.filter(id=product.category_id).exists()
-                ):
-                    discount_value = (price * promo.discount_percent) / 100
-
-                item_total = (price - discount_value) * qty
-
-                # Сохраняем в БД
-                OrderItem.objects.create(
-                    order=order,
-                    product=product,
-                    quantity=qty,
-                    price_at_purchase=price,
-                    discount_amount=discount_value,
+                order = Order.objects.create(
+                    user=user,
+                    promocode=promo,
+                    total_amount=Decimal("0.00"),
                 )
 
-                # Собираем данные для ответа
-                response_goods.append(
+                total_price = Decimal("0.00")
+                total_final_price = Decimal("0.00")
+                response_goods = []
+
+                for item in goods_data:
+                    good_id = item.get("good_id")
+                    qty = int(item.get("quantity", 1))
+
+                    try:
+                        product = Product.objects.select_for_update().get(id=good_id)
+                    except Product.DoesNotExist:
+                        return JsonResponse(
+                            {"error": f"Товар с ID {good_id} не найден в каталоге"},
+                            status=404,
+                        )
+                    if product.stock < qty:
+                        return JsonResponse(
+                            {
+                                "error": f"Недостаточно товара '{product.name}' на складе. В наличии: {product.stock}"
+                            },
+                            status=400,
+                        )
+
+                    price = product.price
+                    discount_value = Decimal("0.00")
+                    if promo and promo.is_applicable_to_product(product):
+                        discount_value = (
+                            price * Decimal(promo.discount_percent) / Decimal(100)
+                        )
+
+                    item_total = (price - discount_value) * qty
+                    total_price += price * qty
+                    total_final_price += item_total
+
+                    OrderItem.objects.create(
+                        order=order,
+                        product=product,
+                        quantity=qty,
+                        price_at_purchase=price,
+                        discount_amount=discount_value,
+                    )
+
+                    product.stock -= qty
+                    product.save()
+
+                    response_goods.append(
+                        {
+                            "good_id": product.id,
+                            "quantity": qty,
+                            "price": float(price),
+                            "discount": (
+                                str(promo.discount_percent / 100)
+                                if discount_value > 0
+                                else "0"
+                            ),
+                            "total": float(item_total),
+                        }
+                    )
+
+                order.total_amount = total_final_price
+                order.save()
+
+                if promo:
+                    promo.current_uses += 1
+                    promo.save()
+
+                return JsonResponse(
                     {
-                        "good_id": product.id,
-                        "quantity": qty,
-                        "price": float(price),
-                        "discount": (
-                            str(promo.discount_percent / 100)
-                            if discount_value > 0
-                            else "0"
-                        ),
-                        "total": float(item_total),
-                    }
+                        "user_id": user.id,
+                        "order_id": order.id,
+                        "goods": response_goods,
+                        "price": float(total_price),
+                        "discount": str(promo.discount_percent / 100) if promo else "0",
+                        "total": float(total_final_price),
+                    },
+                    status=201,
                 )
+        except ValidationError as e:
+            return JsonResponse({"error": str(e)}, status=400)
 
-                total_price += price * qty
-                total_discount_sum += discount_value * qty
-
-            # Обновляем заказ
-            final_total = total_price - total_discount_sum
-            order.total_amount = final_total
-            order.save()
-
-            if promo:
-                promo.current_uses += 1
-                promo.save()
-
-            # Формируем ответ по вашему примеру
+        except Exception as e:
             return JsonResponse(
-                {
-                    "user_id": user.id,
-                    "order_id": order.id,
-                    "goods": response_goods,
-                    "price": float(total_price),
-                    "discount": str(promo.discount_percent / 100) if promo else "0",
-                    "total": float(final_total),
-                },
-                status=201,
+                {"error": "Произошла ошибка при оформлении"}, status=500
             )

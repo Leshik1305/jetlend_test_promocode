@@ -11,9 +11,14 @@ class User(AbstractUser):
     email = models.EmailField(unique=True, verbose_name="E-mail")
     phone_number = models.CharField(
         max_length=15,
-        unique=True,
+        null=True,
+        blank=True,
         verbose_name="Номер телефона",
     )
+
+    class Meta:
+        db_table = "users"
+        verbose_name = "Пользователи"
 
     def __str__(self):
         return self.username

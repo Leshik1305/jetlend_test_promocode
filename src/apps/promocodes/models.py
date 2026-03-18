@@ -39,6 +39,7 @@ class PromoCode(BaseModel):
         verbose_name = "Промокод"
         verbose_name_plural = "Промокоды"
         ordering = ["code"]
+        db_table = "promocodes"
 
     def clean(self):
         """Проверка промокода."""

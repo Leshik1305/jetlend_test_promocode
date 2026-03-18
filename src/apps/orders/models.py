@@ -28,6 +28,7 @@ class Order(BaseModel):
     class Meta:
         verbose_name = "Заказ"
         verbose_name_plural = "Заказы"
+        db_table = "orders"
 
     def __str__(self):
         return f"Заказ №{self.id} | {self.user.username}"
@@ -60,3 +61,4 @@ class OrderItem(BaseModel):
     class Meta:
         verbose_name = "Товар в заказе"
         verbose_name_plural = "Товары в заказе"
+        db_table = "order_items"
