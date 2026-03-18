@@ -30,6 +30,14 @@ class Order(BaseModel):
         verbose_name_plural = "Заказы"
         db_table = "orders"
 
+    @property
+    def total_price_before_discount(self):
+        return sum(item.price_at_purchase * item.quantity for item in self.items.all())
+
+    @property
+    def total_discount_amount(self):
+        return self.total_price_before_discount - self.total_amount
+
     def __str__(self):
         return f"Заказ №{self.id} | {self.user.username}"
 

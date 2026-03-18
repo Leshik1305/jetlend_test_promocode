@@ -41,18 +41,21 @@ class PromoCode(BaseModel):
         ordering = ["code"]
         db_table = "promocodes"
 
-    def clean(self):
+    def is_valid_status(self):
         """Проверка промокода."""
         if not self.is_active:
-            raise ValidationError("Этот промокод деактивирован.")
+            return False, "Этот промокод деактивирован."
 
         if self.valid_until and self.valid_until < timezone.now():
-            raise ValidationError("Срок действия промокода истек.")
+            return False, "Срок действия промокода истек."
 
         if self.current_uses >= self.max_uses:
-            raise ValidationError(
-                "Максимальное количество использований этого промокода исчерпано."
+            return (
+                False,
+                "Максимальное количество использований этого промокода исчерпано.",
             )
+
+        return True, ""
 
     def is_applicable_to_product(self, product):
         """Проверка: можно ли применить этот код к конкретному товару."""
@@ -63,6 +66,12 @@ class PromoCode(BaseModel):
         if allowed_categories.exists() and product.category not in allowed_categories:
             return False
         return True
+
+    def clean(self):
+        """Автоматически вызывается при создании через админку"""
+        is_valid, message = self.is_valid_status()
+        if not is_valid:
+            raise ValidationError(message)
 
     def __str__(self):
         return f"{self.code} (-{self.discount_percent}%)"

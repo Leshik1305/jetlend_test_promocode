@@ -20,14 +20,18 @@ DJANGO_APPS = [
     "django.contrib.staticfiles",
 ]
 
-THIRD_PATY_APPS = []
+THIRD_PARTY_APPS = [
+    "rest_framework",
+    "drf_spectacular",
+]
+
 LOCAL_APPS = [
     "src.apps.orders",
     "src.apps.products",
     "src.apps.promocodes",
     "src.apps.users",
 ]
-INSTALLED_APPS = DJANGO_APPS + THIRD_PATY_APPS + LOCAL_APPS
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 
 MIDDLEWARE = [
@@ -86,6 +90,27 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
+    ],
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny",
+    ],
+    "COERCE_DECIMAL_TO_STRING": True,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+SPECTACULAR_SETTINGS = {
+    "TITLE": "JetLend Promo Service API",
+    "DESCRIPTION": "API для управления заказами и промокодами",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
 
 
 LANGUAGE_CODE = "en-us"
