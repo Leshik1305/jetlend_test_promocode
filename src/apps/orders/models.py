@@ -1,8 +1,9 @@
-from django.db import models
 from django.conf import settings
-from src.core.models import BaseModel
+from django.db import models
+
 from src.apps.products.models import Product
 from src.apps.promocodes.models import PromoCode
+from src.core.models import BaseModel
 
 
 class Order(BaseModel):

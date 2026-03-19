@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from src.apps.orders.models import Order
-from src.apps.products.models import Product, Category
+from src.apps.products.models import Category, Product
 from src.apps.promocodes.models import PromoCode
 
 User = get_user_model()

@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import Category, Product
 
 
@@ -24,7 +25,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ("category", "is_active", "is_promo_eligible")
     search_fields = ("name",)
     list_editable = ("price", "stock", "is_active", "is_promo_eligible")
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = ("id", "created_at", "updated_at")
 
     fieldsets = (
         (

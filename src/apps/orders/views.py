@@ -1,8 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .serializers import OrderCreateSerializer, OrderOutputSerializer
 from .services import OrderService
@@ -20,15 +20,12 @@ class OrderCreateAPIView(APIView):
         data = input_serializer.validated_data
         user = get_object_or_404(User, id=data["user_id"])
 
-        try:
-            order = OrderService.create_order(
-                user=user,
-                goods_data=input_serializer.validated_data["goods"],
-                promocode=input_serializer.validated_data.get("promo_code"),
-            )
+        service = OrderService(user=user)
 
-            output_serializer = OrderOutputSerializer(order)
-            return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+        order = service.create_order(
+            goods_data=data["goods"],
+            promocode=data.get("promo_code"),
+        )
 
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        output_serializer = OrderOutputSerializer(order)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)

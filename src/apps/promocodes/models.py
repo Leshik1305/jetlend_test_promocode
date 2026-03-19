@@ -1,7 +1,8 @@
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
+
 from src.core.models import BaseModel
 
 
@@ -62,10 +63,12 @@ class PromoCode(BaseModel):
         if not product.is_promo_eligible:
             return False
 
-        allowed_categories = self.categories.all()
-        if allowed_categories.exists() and product.category not in allowed_categories:
+        allowed_ids = list(self.categories.values_list("id", flat=True))
+
+        if not allowed_ids:
             return False
-        return True
+
+        return product.category_id in allowed_ids
 
     def clean(self):
         """Автоматически вызывается при создании через админку"""

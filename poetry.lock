@@ -193,6 +193,21 @@ files = [
 ]
 
 [[package]]
+name = "isort"
+version = "8.0.1"
+description = "A Python utility / library to sort Python imports."
+optional = false
+python-versions = ">=3.10.0"
+groups = ["dev"]
+files = [
+    {file = "isort-8.0.1-py3-none-any.whl", hash = "sha256:28b89bc70f751b559aeca209e6120393d43fbe2490de0559662be7a9787e3d75"},
+    {file = "isort-8.0.1.tar.gz", hash = "sha256:171ac4ff559cdc060bcfff550bc8404a486fee0caab245679c2abe7cb253c78d"},
+]
+
+[package.extras]
+colors = ["colorama"]
+
+[[package]]
 name = "jsonschema"
 version = "4.26.0"
 description = "An implementation of JSON Schema validation for Python"
@@ -712,4 +727,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "458b47f41c95e93e1c1a2b03f49de4824480b1d78712d5a6551f360029d6835b"
+content-hash = "acedd4f0488f8ab3eaf00e7201b4164932a45ca8a4dd45fc3916db1ff104a66e"

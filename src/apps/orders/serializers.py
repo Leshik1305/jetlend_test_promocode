@@ -1,12 +1,16 @@
 from rest_framework import serializers
 
 from src.apps.orders.models import Order, OrderItem
+from src.apps.products.models import Product
 
 
 class OrderItemInputSerializer(serializers.Serializer):
     """Сериализатор для валидации входящих данных для товара."""
 
-    good_id = serializers.IntegerField()
+    good_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(),
+        source="product",
+    )
     quantity = serializers.IntegerField(min_value=1)
 
 
@@ -40,9 +44,10 @@ class OrderItemOutputSerializer(serializers.ModelSerializer):
 
     def get_discount(self, obj):
         """Рассчитывает процент скидки для позиции заказа."""
-        if obj.price_at_purchase > 0:
-            return str(round(obj.discount_amount / obj.price_at_purchase, 2))
-        return "0"
+        if obj.price_at_purchase > 0 and obj.discount_amount > 0:
+            percent = obj.discount_amount / obj.price_at_purchase
+            return "{:.2f}".format(percent)
+        return "0.00"
 
     def get_total(self, obj):
         """Рассчитывает общую стоимость позиции с учетом скидки."""
@@ -64,6 +69,13 @@ class OrderOutputSerializer(serializers.ModelSerializer):
 
     def get_discount(self, obj):
         """Возвращает процент скидки примененного промокода."""
+        price_before = obj.total_price_before_discount or 0
+        price_after = obj.total_amount or 0
+
+        if price_before <= price_after:
+            return "0.00"
+
         if obj.promocode:
-            return str(obj.promocode.discount_percent / 100)
-        return "0"
+            return "{:.2f}".format(obj.promocode.discount_percent / 100)
+
+        return "0.00"
