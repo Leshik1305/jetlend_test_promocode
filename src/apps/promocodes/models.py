@@ -58,17 +58,18 @@ class PromoCode(BaseModel):
 
         return True, ""
 
-    def is_applicable_to_product(self, product):
+    def is_applicable_to_product(self, product, allowed_ids=None):
         """Проверка: можно ли применить этот код к конкретному товару."""
         if not product.is_promo_eligible:
             return False
 
-        allowed_ids = list(self.categories.values_list("id", flat=True))
+        if allowed_ids is None:
+            allowed_ids = list(self.categories.values_list("id", flat=True))
 
         if not allowed_ids:
-            return False
+            return True
 
-        return product.category_id in allowed_ids
+        return product.category_id not in allowed_ids
 
     def clean(self):
         """Автоматически вызывается при создании через админку"""

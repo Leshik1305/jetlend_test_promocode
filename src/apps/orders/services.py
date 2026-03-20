@@ -15,6 +15,8 @@ class OrderService:
     @transaction.atomic
     def create_order(self, goods_data, promocode=None):
         promo = None
+        allowed_ids = []
+
         if promocode and promocode.strip():
             promo = (
                 PromoCode.objects.select_for_update()
@@ -31,14 +33,15 @@ class OrderService:
             if not is_valid:
                 raise ValidationError({"promo_code": message})
 
+            allowed_ids = list(promo.categories.values_list("id", flat=True))
+
             if Order.objects.filter(user=self.user, promocode=promo).exists():
                 raise ValidationError(
                     {"promo_code": "Вы уже использовали этот промокод"}
                 )
 
-        order = Order.objects.create(user=self.user, promocode=promo, total_amount=0)
+        order = Order.objects.create(user=self.user, promocode=None, total_amount=0)
 
-        total_price = 0
         final_total_price = 0
         total_discount_sum = 0
 
@@ -53,11 +56,13 @@ class OrderService:
             price = product.price
             discount_per_item = 0
 
-            if promo and promo.is_applicable_to_product(product):
+            if promo and promo.is_applicable_to_product(
+                product, allowed_ids=allowed_ids
+            ):
+
                 discount_per_item = (price * promo.discount_percent) / 100
                 total_discount_sum += discount_per_item * qty
 
-            total_price += price * qty
             final_total_price += (price - discount_per_item) * qty
 
             OrderItem.objects.create(
@@ -71,12 +76,14 @@ class OrderService:
             product.stock -= qty
             product.save()
 
-        order.total_amount = final_total_price
-        order.save()
+        if promocode and promo and total_discount_sum == 0:
+            promo = None
 
         if promo and total_discount_sum > 0:
             order.promocode = promo
             promo.current_uses += 1
             promo.save()
 
+        order.total_amount = final_total_price
+        order.save()
         return order
